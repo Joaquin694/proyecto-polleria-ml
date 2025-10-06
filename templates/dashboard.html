@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+  <!-- Encabezado -->
+  <div class="d-flex align-items-center justify-content-between flex-wrap">
+    <h2 class="mb-3 d-flex align-items-center">
+      <img src="{% static 'images/logo.jpeg' %}" alt="Logo" width="40" class="me-2">
+      Dashboard – {{ user.username }}
+    </h2>
+    <div class="text-muted">
+      {% if profile %} {{ profile.nombre }} · {{ profile.cargo }} {% endif %}
+    </div>
+  </div>
+
+  <!-- Tarjetas -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <div class="small text-muted">Retenidos</div>
+          <div class="display-6 text-success fw-bold">{{ retenidos }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <div class="small text-muted">Perdidos</div>
+          <div class="display-6 text-danger fw-bold">{{ perdidos }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <div class="small text-muted">Prob. Alta (≥0.80)</div>
+          <div class="display-6 text-primary fw-bold">{{ alta }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <div class="small text-muted">Prob. Media+Baja</div>
+          <div class="display-6 text-warning fw-bold">{{ media|add:baja }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gráficos -->
+  <div class="row g-4 mb-4">
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white fw-semibold">Retenidos vs Perdidos</div>
+        <div class="card-body">
+          <canvas id="chartPie"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white fw-semibold">Evolución (últimos días)</div>
+        <div class="card-body">
+          <canvas id="chartLine"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white fw-semibold">Ejecuciones por Modelo</div>
+        <div class="card-body">
+          <canvas id="chartBar"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Historial -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white fw-semibold">Historial de predicciones</div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Modelo</th>
+              <th>Archivo</th>
+              <th>Fecha</th>
+              <th>Total filas</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for run in runs %}
+              <tr>
+                <td>{{ run.get_model_choice_display }}</td>
+                <td class="text-truncate" style="max-width:280px">{{ run.uploaded_csv.name }}</td>
+                <td>{{ run.created_at|date:"Y-m-d H:i" }}</td>
+                <td>{{ run.total_rows }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="4" class="text-muted">Aún no hay predicciones.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {% if empleados %}
+  <!-- Solo administradores -->
+  <div class="card border-0 shadow-sm mt-4">
+    <div class="card-header bg-white fw-semibold">Empleados registrados</div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead class="table-light">
+            <tr><th>Nombre</th><th>Cargo</th><th>Correo</th><th>Registro</th></tr>
+          </thead>
+          <tbody>
+            {% for emp in empleados %}
+            <tr>
+              <td>{{ emp.nombre }}</td>
+              <td>{{ emp.cargo }}</td>
+              <td>{{ emp.user.email }}</td>
+              <td>{{ emp.fecha_registro }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <small class="text-muted">Vista visible solo para administradores.</small>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+(() => {
+  // Datos del backend
+  const labelsDays = {{ labels_days|safe }};
+  const dataRetenidosDays = {{ data_retenidos_days|safe }};
+  const dataPerdidosDays  = {{ data_perdidos_days|safe }};
+
+  // Gráfico de pastel: Retenidos vs Perdidos
+  new Chart(document.getElementById('chartPie'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Retenidos', 'Perdidos'],
+      datasets: [{
+        data: [{{ retenidos }}, {{ perdidos }}]
+      }]
+    }
+  });
+
+  // Gráfico de líneas: evolución diaria
+  new Chart(document.getElementById('chartLine'), {
+    type: 'line',
+    data: {
+      labels: labelsDays,
+      datasets: [
+        { label: 'Retenidos', data: dataRetenidosDays, tension: 0.3 },
+        { label: 'Perdidos',  data: dataPerdidosDays,  tension: 0.3 }
+      ]
+    }
+  });
+
+  // Gráfico de barras: ejecuciones por modelo (RF, DT, LR)
+  new Chart(document.getElementById('chartBar'), {
+    type: 'bar',
+    data: {
+      labels: ['RandomForest', 'DecisionTree', 'LogisticRegression'],
+      datasets: [{
+        label: 'Ejecuciones',
+        data: [{{ rf_total }}, {{ dt_total }}, {{ lr_total }}]
+      }]
+    }
+  });
+})();
+</script>
+{% endblock %}

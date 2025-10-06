@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+
+<h4 class="mb-1">
+  Resultados ({{ run.get_model_choice_display }}) — {{ run.created_at|date:"d/m/Y H:i" }}
+</h4>
+<p class="text-muted">Total filas: {{ total }} · Retenidos: {{ retenidos }} · Perdidos: {{ perdidos }}</p>
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white fw-semibold">Retenidos vs Perdidos</div>
+      <div class="card-body">
+        <canvas id="chartPie"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white fw-semibold">Distribución de Prob(1)</div>
+      <div class="card-body">
+        {% if has_probs %}
+          <canvas id="chartHist"></canvas>
+          <small class="text-muted d-block mt-2">Bins 0.0–0.1 … 0.9–1.0</small>
+        {% else %}
+          <div class="alert alert-warning mb-0">Esta ejecución no tiene probabilidades guardadas.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if has_probs %}
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-white fw-semibold">Barrido de umbral (0.00–1.00)</div>
+  <div class="card-body">
+    <canvas id="chartThr"></canvas>
+    <small class="text-muted">Muestra cuántos (y qué %) quedan como “1” al variar el umbral.</small>
+  </div>
+</div>
+{% endif %}
+
+<div class="card border-0 shadow-sm">
+  <div class="card-header bg-white fw-semibold">Detalle</div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-sm table-striped align-middle">
+        <thead class="table-light">
+          <tr><th>#</th><th>ID_Cliente</th><th>Cliente</th><th>Predicción</th><th>Prob(1)</th></tr>
+        </thead>
+        <tbody>
+        {% for r in results %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ r.id_cliente }}</td>
+            <td>{{ r.apellidos_nombres }}</td>
+            <td>
+              {% if r.pred_label %}
+                <span class="badge bg-danger">SE PIERDE (1)</span>
+              {% else %}
+                <span class="badge bg-success">NO SE PIERDE (0)</span>
+              {% endif %}
+            </td>
+            <td>{{ r.prob|default_if_none:"-"|floatformat:3 }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="text-muted">Sin resultados.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <a class="btn btn-secondary" href="{% url 'predictions:upload' %}">Nueva predicción</a>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+(() => {
+  // Pie: retenidos/perdidos
+  new Chart(document.getElementById('chartPie'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Retenidos','Perdidos'],
+      datasets: [{ data: [{{ retenidos }}, {{ perdidos }}] }]
+    }
+  });
+
+  {% if has_probs %}
+  // Histograma Prob(1)
+  const histLabels = {{ hist_labels|safe }};
+  const histCounts = {{ hist_counts|safe }};
+  new Chart(document.getElementById('chartHist'), {
+    type: 'bar',
+    data: { labels: histLabels, datasets: [{ label: 'Cantidad', data: histCounts }] },
+    options: { scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+  });
+
+  // Barrido de umbral
+  const thrLabels = {{ thr_labels|safe }};
+  const thrRate   = {{ thr_rate|safe }};
+  const thrCount  = {{ thr_count|safe }};
+  new Chart(document.getElementById('chartThr'), {
+    type: 'line',
+    data: {
+      labels: thrLabels,
+      datasets: [
+        { label: '% se pierde', data: thrRate, tension:.3, yAxisID:'y1' },
+        { label: 'Recuento',    data: thrCount, tension:.3, yAxisID:'y2' }
+      ]
+    },
+    options: {
+      interaction: { mode:'index', intersect:false }, stacked:false,
+      scales: {
+        y1:{ type:'linear', position:'left', min:0, max:100, ticks:{ callback:v=>v+'%' } },
+        y2:{ type:'linear', position:'right', grid:{ drawOnChartArea:false } }
+      }
+    }
+  });
+  {% endif %}
+})();
+</script>
+{% endblock %}

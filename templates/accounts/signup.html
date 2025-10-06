@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<h3>Registrar Empleado</h3>
+<form method="post">{% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="row g-3">
+    <div class="col-md-6">{{ form.nombre.label_tag }} {{ form.nombre }}</div>
+    <div class="col-md-6">{{ form.cargo.label_tag }} {{ form.cargo }}</div>
+    <div class="col-md-6"><label>Email</label><input name="email" type="email" class="form-control" required></div>
+    <div class="col-md-6"><label>Contraseña</label><input name="password" type="password" class="form-control" required></div>
+  </div>
+  <button class="btn btn-success mt-3">Crear</button>
+</form>
+{% endblock %}

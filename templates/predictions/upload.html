@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container py-3">
+
+  <!-- Encabezado -->
+  <div class="d-flex align-items-center justify-content-between flex-wrap mb-3">
+    <div class="d-flex align-items-center">
+      <img src="{% static 'images/logo.jpeg' %}" alt="Logo" width="44" height="44" class="me-2 rounded shadow-sm">
+      <div>
+        <h2 class="h4 mb-0">Cargar archivo para predicción</h2>
+        <small class="text-muted">Selecciona el modelo y sube tu archivo (.csv o .xlsx)</small>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mensajes del sistema -->
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} mb-3">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- Tarjeta principal -->
+  <div class="card border-0 shadow">
+    <div class="card-header bg-dark text-white d-flex align-items-center">
+      <i class="bi bi-cloud-upload me-2"></i> Subir archivo y ejecutar
+    </div>
+    <div class="card-body">
+      <form method="post" enctype="multipart/form-data" action="{% url 'predictions:upload' %}">
+        {% csrf_token %}
+
+        <div class="row g-3">
+          <!-- Archivo -->
+          <div class="col-12 col-lg-6">
+            <label class="form-label">Archivo (.csv o .xlsx)</label>
+            <input
+              type="file"
+              name="uploaded_csv"
+              accept=".csv,.xlsx"
+              class="form-control"
+              required
+            >
+            <div class="form-text">
+              Usa el layout de columnas del entrenamiento (por ejemplo: <em>ID_Cliente</em>, <em>Apellido_Nombre</em>, <em>Edad</em>, <em>Sexo</em>, <em>Frec_Mes1..5</em>, etc.).
+            </div>
+          </div>
+
+          <!-- Modelo -->
+          <div class="col-12 col-lg-3">
+            <label class="form-label">Modelo</label>
+            <select name="model_choice" class="form-select" required>
+              <option value="rf">RandomForest</option>
+              <option value="dt">DecisionTree</option>
+              <option value="lr">LogisticRegression</option>
+            </select>
+            <div class="form-text">
+              El modelo será cargado desde <code>models_store/</code>.
+            </div>
+          </div>
+
+          <!-- Botón -->
+          <div class="col-12 col-lg-3 d-flex align-items-end">
+            <button class="btn btn-warning w-100">
+              <i class="bi bi-rocket-takeoff me-1"></i> Ejecutar Predicción
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <!-- Ayuda rápida -->
+      <hr class="my-4">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <div class="p-3 bg-light rounded border h-100">
+            <div class="fw-semibold mb-1">Consejos de archivo</div>
+            <ul class="mb-0 small">
+              <li>Formato: <strong>.csv</strong> o <strong>.xlsx</strong></li>
+              <li>Usa el mismo esquema de columnas que el entrenamiento.</li>
+              <li>No cambies nombres de columnas (respeta tildes y espacios).</li>
+            </ul>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="p-3 bg-light rounded border h-100">
+            <div class="fw-semibold mb-1">Modelos disponibles</div>
+            <ul class="mb-0 small">
+              <li><span class="badge text-bg-secondary">RF</span> RandomForest</li>
+              <li><span class="badge text-bg-secondary">DT</span> DecisionTree</li>
+              <li><span class="badge text-bg-secondary">LR</span> LogisticRegression</li>
+            </ul>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="p-3 bg-light rounded border h-100">
+            <div class="fw-semibold mb-1">Salida</div>
+            <ul class="mb-0 small">
+              <li>Resultados guardados en base de datos.</li>
+              <li>Podrás ver el detalle en <em>Historial</em> y en la vista de resultados.</li>
+              <li>Incluye etiqueta (0/1) y probabilidad (si el modelo lo soporta).</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
